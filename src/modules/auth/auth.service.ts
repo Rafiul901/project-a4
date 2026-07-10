@@ -1,5 +1,5 @@
 import { prisma } from "../../config/prisma";
-import AppError from "../../utils/AppErro";
+import AppError from "../../utils/AppError";
 import { generateToken } from "../../utils/jwt";
 import { LoginUser, RegisterUser } from "./auth.interface";
 import bcrypt from "bcrypt";
@@ -57,6 +57,23 @@ const login = async(payload:LoginUser)=>{
   }
 }
 
+const me = async (id: string) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      status: true,
+    },
+  });
+
+  return user;
+};
+
 export const AuthService={
-    register,login
+    register,login,me
 }
