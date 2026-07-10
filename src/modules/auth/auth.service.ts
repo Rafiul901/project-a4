@@ -1,7 +1,10 @@
 import { prisma } from "../../config/prisma";
 import AppError from "../../utils/AppErro";
-import { RegisterUser } from "./auth.interface";
+import { generateToken } from "../../utils/jwt";
+import { LoginUser, RegisterUser } from "./auth.interface";
 import bcrypt from "bcrypt";
+
+
 const register = async(payload:RegisterUser)=>{
     const existUser = await prisma.user.findUnique({
         where:{
@@ -24,3 +27,36 @@ return result
 
 };
 
+
+const login = async(payload:LoginUser)=>{
+    const user = await prisma.user.findUnique({
+        where:{
+            email:payload.email,
+        }
+    });
+
+    if(!user){
+        throw new AppError(404, "User not found");
+    }
+    const isMatched =await bcrypt.compare(
+        payload.password,user.password
+    )
+
+     if (!isMatched) {
+    throw new AppError(401, "Invalid credentials");
+  }
+
+  const token =generateToken({
+    id:user.id,role:user.role,
+  });
+
+  const {password,...userInfo}=user;
+
+  return{
+    token,user:userInfo,
+  }
+}
+
+export const AuthService={
+    register,login
+}
