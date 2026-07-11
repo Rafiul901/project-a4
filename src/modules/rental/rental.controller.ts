@@ -3,7 +3,7 @@ import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 
 import { IRentalFilters } from "./rental.interface";
-
+import { RentalService } from "./rental.sevice";
 
 
 const createRental = catchAsync(async (req: Request, res: Response) => {
