@@ -11,34 +11,35 @@ import {
 
 const router = Router();
 
-
+// Create Property (LANDLORD only)
 router.post(
   "/",
   auth,
   authorize("LANDLORD", "ADMIN"),
-  validateRequest(createPropertySchema),
+  validateRequest(createPropertySchema), // ← Remove "body" argument
   PropertyController.createProperty
 );
 
+// Get All Properties (Public with filters)
 router.get(
   "/",
-  validateRequest(propertyFiltersSchema),
+  validateRequest(propertyFiltersSchema), // ← Remove "query" argument
   PropertyController.getAllProperties
 );
 
-
+// Get Single Property (Public)
 router.get("/:id", PropertyController.getSingleProperty);
 
-
+// Update Property (LANDLORD only - owner check in service)
 router.patch(
   "/:id",
   auth,
   authorize("LANDLORD", "ADMIN"),
-  validateRequest(updatePropertySchema),
+  validateRequest(updatePropertySchema), // ← Remove "body" argument
   PropertyController.updateProperty
 );
 
-
+// Delete Property (LANDLORD only - owner check in service)
 router.delete(
   "/:id",
   auth,

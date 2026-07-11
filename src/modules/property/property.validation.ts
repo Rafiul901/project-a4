@@ -8,7 +8,8 @@ export const createPropertySchema = z.object({
     location: z.string().min(2, "Location is required"),
     amenities: z.array(z.string()).min(1, "At least 1 amenity required"),
     available: z.boolean().optional(),
-    categoryId: z.string().cuid("Invalid category ID format"), 
+   // Inside createPropertySchema -> body:
+categoryId: z.string({ message: "Category ID is required" }), // Changed 'required_error' to 'message' // Changed from .cuid() to standard string
   }),
 });
 
@@ -20,7 +21,7 @@ export const updatePropertySchema = z.object({
     location: z.string().min(2).optional(),
     amenities: z.array(z.string()).min(1).optional(),
     available: z.boolean().optional(),
-    categoryId: z.string().cuid().optional(),
+    categoryId: z.string().optional(), // Changed from .cuid() to standard string
   }),
 });
 
@@ -29,8 +30,7 @@ export const propertyFiltersSchema = z.object({
     location: z.string().optional(),
     minPrice: z.coerce.number().positive().optional(),
     maxPrice: z.coerce.number().positive().optional(),
-    category: z.string().cuid().optional(),
-    
+    category: z.string().optional(), // Changed from .cuid() to standard string
     available: z
       .string()
       .optional()
