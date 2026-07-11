@@ -8,5 +8,5 @@ const router = Router();
 router.use("/auth", authRoutes);
 router.use('/categories',categoryRouter)
 router.use("/properties", propertyRouter);
-
+router.use("/rentals", rentalRouter);
 export default router; 
