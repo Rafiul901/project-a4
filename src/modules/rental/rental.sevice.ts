@@ -4,14 +4,13 @@ import AppError from "../../utils/AppError";
 import { IRental, IRentalFilters, IUpdateRentalStatus } from "./rental.interface";
 
 
-
 const rentalInclude = {
   tenant: {
     select: {
       id: true,
       name: true,
       email: true,
-      phone: true,
+      role: true,
     },
   },
   property: {
@@ -22,7 +21,7 @@ const rentalInclude = {
           id: true,
           name: true,
           email: true,
-          phone: true,
+          role: true,
         },
       },
     },
@@ -30,26 +29,53 @@ const rentalInclude = {
 };
 
 const createRental = async (payload: IRental, tenantId: string) => {
-  const { propertyId, moveInDate, message } = payload;
+  const { propertyId, moveInDate } = payload;
 
+  const property = await prisma.property.findUnique({
+    where: { id: propertyId },
+    select: {
+      id: true,
+      available: true,
+      landlordId: true,
+    },
+  });
+
+  if (!property) {
+    throw new AppError(404, "Property not found");
+  }
+
+  if (!property.available) {
+    throw new AppError(400, "Property is not available for rent");
+  }
+
+  if (property.landlordId === tenantId) {
+    throw new AppError(400, "You cannot request to rent your own property");
+  }
+
+  const existingRequest = await prisma.rentalRequest.findFirst({
+    where: {
+      tenantId,
+      propertyId,
+      status: "PENDING",
+    },
+  });
+
+  if (existingRequest) {
+    throw new AppError(409, "You already have a pending request for this property");
+  }
 
   const createData: any = {
     tenantId,
     propertyId,
-    message: message || null,
     status: "PENDING",
+    moveInDate: moveInDate ? new Date(moveInDate) : new Date(), 
   };
-
-  if (moveInDate) {
-    createData.moveInDate = new Date(moveInDate);
-  }
 
   return await prisma.rentalRequest.create({
     data: createData,
     include: rentalInclude,
   });
 };
-
 
 const getTenantRentals = async (tenantId: string, filters: IRentalFilters) => {
   const {
@@ -94,7 +120,6 @@ const getTenantRentals = async (tenantId: string, filters: IRentalFilters) => {
   };
 };
 
-
 const getRentalById = async (id: string, userId: string, userRole: string) => {
   const rental = await prisma.rentalRequest.findUnique({
     where: { id },
@@ -105,7 +130,6 @@ const getRentalById = async (id: string, userId: string, userRole: string) => {
     throw new AppError(404, "Rental request not found");
   }
 
-  // Authorization: Only tenant, landlord of property, or ADMIN can view
   const isTenant = rental.tenantId === userId;
   const isLandlord = rental.property.landlordId === userId;
   const isAdmin = userRole === "ADMIN";
@@ -116,7 +140,6 @@ const getRentalById = async (id: string, userId: string, userRole: string) => {
 
   return rental;
 };
-
 
 const getLandlordRequests = async (landlordId: string, filters: IRentalFilters) => {
   const {
@@ -163,7 +186,6 @@ const getLandlordRequests = async (landlordId: string, filters: IRentalFilters) 
   };
 };
 
-
 const updateRentalStatus = async (
   id: string,
   payload: IUpdateRentalStatus,
@@ -171,7 +193,6 @@ const updateRentalStatus = async (
 ) => {
   const { status } = payload;
 
-  // Get rental request with property info
   const rental = await prisma.rentalRequest.findUnique({
     where: { id },
     include: {
@@ -189,39 +210,31 @@ const updateRentalStatus = async (
     throw new AppError(404, "Rental request not found");
   }
 
-  // Check authorization: Only the landlord of the property can approve/reject
   if (rental.property.landlordId !== landlordId) {
     throw new AppError(403, "You are not authorized to manage this rental request");
   }
 
-  // Check if request is still pending
   if (rental.status !== "PENDING") {
     throw new AppError(400, `This request has already been ${rental.status.toLowerCase()}`);
   }
 
-  // If approving, check if property is still available
   if (status === "APPROVED" && !rental.property.available) {
     throw new AppError(400, "Property is no longer available");
   }
 
-  // Update rental status
   const updatedRental = await prisma.$transaction(async (tx) => {
-    // Update the main rental request
     const updated = await tx.rentalRequest.update({
       where: { id },
       data: { status },
       include: rentalInclude,
     });
 
-    // If APPROVED, update property availability and reject other pending requests
     if (status === "APPROVED") {
-      // Update property to not available
       await tx.property.update({
         where: { id: rental.propertyId },
         data: { available: false },
       });
 
-      // Reject all other pending requests for this property
       await tx.rentalRequest.updateMany({
         where: {
           propertyId: rental.propertyId,
@@ -241,7 +254,6 @@ const updateRentalStatus = async (
 
   return updatedRental;
 };
-
 
 const cancelRentalRequest = async (id: string, tenantId: string) => {
   const rental = await prisma.rentalRequest.findUnique({
@@ -267,7 +279,6 @@ const cancelRentalRequest = async (id: string, tenantId: string) => {
 
   return await prisma.rentalRequest.update({
     where: { id },
-
     data: { 
       status: "REJECTED" as RentalStatus
     },
