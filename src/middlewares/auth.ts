@@ -8,7 +8,7 @@ import { prisma } from "../config/prisma";
 declare global {
   namespace Express {
     interface Request {
-      user?: {
+      user: {
         id: string;
         role: string;
         email: string;
