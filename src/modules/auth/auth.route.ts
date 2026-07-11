@@ -18,17 +18,9 @@ router.get(
     AuthController.me
 );
 
-router.post(
-    "/",
-    auth,
-    authorize("ADMIN"),
-    CategoryController.createCategory
-);
 
-router.get(
-    "/",
-    CategoryController.getCategories
-);
+
+
 
 
 export default router;
