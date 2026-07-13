@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from "express";
 const validateRequest = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Check if it's a GET request (query params) or POST/PATCH (body)
+     
       const data = req.method === 'GET' ? { query: req.query } : { body: req.body };
       schema.parse(data);
       next();

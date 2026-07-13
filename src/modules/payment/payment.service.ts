@@ -1,6 +1,3 @@
-
-
-
 import Stripe from "stripe";
 import { IConfirmPayment, ICreatePayment, IPaymentFilters } from "./payment.interface";
 import { prisma } from "../../config/prisma";
@@ -26,11 +23,11 @@ const paymentInclude = {
   },
 };
 
-// 1️⃣ Create Payment with Stripe
+
 const createPayment = async (payload: ICreatePayment, tenantId: string) => {
   const { rentalRequestId, provider } = payload;
 
-  // Check if rental request exists and is APPROVED
+  
   const rental = await prisma.rentalRequest.findUnique({
     where: { id: rentalRequestId },
     include: {
@@ -40,20 +37,20 @@ const createPayment = async (payload: ICreatePayment, tenantId: string) => {
   });
 
   if (!rental) {
-    throw new AppError(404, "Rental request not found");
+    throw new AppError(404, "not found");
   }
 
-  // Check authorization: Only the tenant who owns the rental can pay
+
   if (rental.tenantId !== tenantId) {
     throw new AppError(403, "You are not authorized to pay for this rental");
   }
 
-  // Check if rental is approved
+  
   if (rental.status !== "APPROVED") {
     throw new AppError(400, "Rental request must be approved before payment");
   }
 
-  // Check if payment already exists
+
   const existingPayment = await prisma.payment.findUnique({
     where: { rentalRequestId },
   });
@@ -62,10 +59,13 @@ const createPayment = async (payload: ICreatePayment, tenantId: string) => {
     throw new AppError(409, "Payment already exists for this rental");
   }
 
-  // Get property price
+
   const amount = rental.property.price;
 
-  // Create Stripe Checkout Session
+
+  const frontendBaseUrl = process.env.FRONTEND_URL || "http://localhost:5000";
+
+ 
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ["card"],
     line_items: [
@@ -76,14 +76,14 @@ const createPayment = async (payload: ICreatePayment, tenantId: string) => {
             name: `Rent Payment - ${rental.property.title}`,
             description: `Payment for ${rental.property.title} - ${rental.property.location}`,
           },
-          unit_amount: Math.round(amount * 100), // Convert to cents
+          unit_amount: Math.round(amount * 100), 
         },
         quantity: 1,
       },
     ],
     mode: "payment",
-    success_url: `${process.env.FRONTEND_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+    success_url: `${frontendBaseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${frontendBaseUrl}/payment/cancel`,
     metadata: {
       rentalRequestId: rental.id,
       tenantId: rental.tenantId,
@@ -91,14 +91,17 @@ const createPayment = async (payload: ICreatePayment, tenantId: string) => {
     },
   });
 
-  // Create payment record in database
+
   const payment = await prisma.payment.create({
     data: {
-      rentalRequestId: rental.id,
+      rentalRequest: {
+        connect: { id: rental.id },
+      },
       amount: amount,
-      provider: provider,
+      provider: provider as any, 
       status: "PENDING",
-      transactionId: session.payment_intent as string,
+    
+      transactionId: (session.payment_intent as string) || session.id, 
     },
     include: paymentInclude,
   });
@@ -113,7 +116,7 @@ const createPayment = async (payload: ICreatePayment, tenantId: string) => {
   };
 };
 
-// 2️⃣ Confirm Payment
+
 const confirmPayment = async (payload: IConfirmPayment) => {
   const { paymentId, transactionId } = payload;
 
@@ -136,7 +139,7 @@ const confirmPayment = async (payload: IConfirmPayment) => {
     throw new AppError(400, "Payment already completed");
   }
 
-  // Verify payment with Stripe
+
   try {
     const paymentIntent = await stripe.paymentIntents.retrieve(transactionId);
     
@@ -147,9 +150,9 @@ const confirmPayment = async (payload: IConfirmPayment) => {
     throw new AppError(400, "Failed to verify payment: " + error.message);
   }
 
-  // Use transaction to update all related records
+
   const result = await prisma.$transaction(async (tx) => {
-    // Update payment
+
     const updatedPayment = await tx.payment.update({
       where: { id: paymentId },
       data: {
@@ -160,19 +163,19 @@ const confirmPayment = async (payload: IConfirmPayment) => {
       include: paymentInclude,
     });
 
-    // Update rental request status to ACTIVE
+  
     await tx.rentalRequest.update({
       where: { id: payment.rentalRequestId },
       data: { status: "ACTIVE" },
     });
 
-    // Update property availability
+
     await tx.property.update({
       where: { id: payment.rentalRequest.propertyId },
       data: { available: false },
     });
 
-    // Reject all other pending requests for this property
+
     await tx.rentalRequest.updateMany({
       where: {
         propertyId: payment.rentalRequest.propertyId,
@@ -192,7 +195,6 @@ const confirmPayment = async (payload: IConfirmPayment) => {
   return result;
 };
 
-// 3️⃣ Get Payment History (Tenant)
 const getPaymentHistory = async (tenantId: string, filters: IPaymentFilters) => {
   const {
     status,
@@ -238,7 +240,7 @@ const getPaymentHistory = async (tenantId: string, filters: IPaymentFilters) => 
   };
 };
 
-// 4️⃣ Get Single Payment
+
 const getPaymentById = async (id: string, userId: string, userRole: string) => {
   const payment = await prisma.payment.findUnique({
     where: { id },
@@ -249,7 +251,7 @@ const getPaymentById = async (id: string, userId: string, userRole: string) => {
     throw new AppError(404, "Payment not found");
   }
 
-  // Authorization: Only tenant, landlord, or admin can view
+
   const isTenant = payment.rentalRequest.tenantId === userId;
   const isLandlord = payment.rentalRequest.property.landlordId === userId;
   const isAdmin = userRole === "ADMIN";
@@ -261,7 +263,7 @@ const getPaymentById = async (id: string, userId: string, userRole: string) => {
   return payment;
 };
 
-// 5️⃣ Handle Stripe Webhook
+
 const handleStripeWebhook = async (event: any) => {
   switch (event.type) {
     case 'payment_intent.succeeded': {
@@ -273,7 +275,7 @@ const handleStripeWebhook = async (event: any) => {
         break;
       }
 
-      // Find the payment
+     
       const payment = await prisma.payment.findFirst({
         where: {
           transactionId: paymentIntent.id,
@@ -282,7 +284,7 @@ const handleStripeWebhook = async (event: any) => {
       });
 
       if (payment && payment.status !== "COMPLETED") {
-        // Confirm the payment
+  
         await confirmPayment({
           paymentId: payment.id,
           transactionId: paymentIntent.id,
@@ -294,7 +296,7 @@ const handleStripeWebhook = async (event: any) => {
     case 'payment_intent.payment_failed': {
       const paymentIntent = event.data.object;
       
-      // Update payment status to FAILED
+
       await prisma.payment.updateMany({
         where: {
           transactionId: paymentIntent.id,

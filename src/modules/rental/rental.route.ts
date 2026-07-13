@@ -11,9 +11,7 @@ import {
 
 const router = Router();
 
-// ==================== TENANT ROUTES ====================
 
-// Create rental request (Tenant only)
 router.post(
   "/",
   auth,
@@ -22,7 +20,7 @@ router.post(
   RentalController.createRental
 );
 
-// Get tenant's rental history (Tenant only)
+
 router.get(
   "/",
   auth,
@@ -31,14 +29,14 @@ router.get(
   RentalController.getTenantRentals
 );
 
-// Get single rental request (Tenant or Landlord or Admin)
+
 router.get(
   "/:id",
   auth,
   RentalController.getRentalById
 );
 
-// Cancel rental request (Tenant only)
+
 router.patch(
   "/:id/cancel",
   auth,
@@ -46,9 +44,7 @@ router.patch(
   RentalController.cancelRentalRequest
 );
 
-// ==================== LANDLORD ROUTES ====================
 
-// Get landlord's property requests (Landlord only)
 router.get(
   "/landlord/requests",
   auth,
@@ -57,7 +53,6 @@ router.get(
   RentalController.getLandlordRequests
 );
 
-// Approve/Reject rental request (Landlord only)
 router.patch(
   "/landlord/requests/:id",
   auth,
