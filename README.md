@@ -7,7 +7,7 @@ A secure and scalable REST API for a rental property marketplace where tenants c
 ## 🚀 Live API
 
 ```
-https://your-live-api-url.com
+project-a4-taupe.vercel.app
 ```
 
 ## 📖 Project Overview
