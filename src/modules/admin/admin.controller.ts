@@ -8,7 +8,7 @@ import AppError from "../../utils/AppError";
 
 
 const getAllUsers = catchAsync(async (req: Request, res: Response) => {
-  // Validate role query param
+
   let role: Role | undefined;
   if (req.query.role) {
     const roleValue = req.query.role as string;
