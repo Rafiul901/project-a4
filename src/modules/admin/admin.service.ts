@@ -1,11 +1,10 @@
-
+import { PaymentStatus, RentalStatus, Role, UserStatus } from "../../../generated/prisma/enums";
 import { prisma } from "../../config/prisma";
 import AppError from "../../utils/AppError";
 
-
 const getAllUsers = async (filters: {
-  role?: string;
-  status?: string;
+  role?: Role;
+  status?: UserStatus;
   search?: string;
   page?: number;
   limit?: number;
@@ -24,7 +23,6 @@ const getAllUsers = async (filters: {
 
   const skip = (page - 1) * limit;
 
-
   const where: any = {};
 
   if (role) {
@@ -39,7 +37,6 @@ const getAllUsers = async (filters: {
     where.OR = [
       { name: { contains: search, mode: "insensitive" } },
       { email: { contains: search, mode: "insensitive" } },
-      { phone: { contains: search, mode: "insensitive" } },
     ];
   }
 
@@ -55,12 +52,10 @@ const getAllUsers = async (filters: {
         id: true,
         name: true,
         email: true,
-        phone: true,
         role: true,
         status: true,
         createdAt: true,
         updatedAt: true,
-        // Exclude password
       },
     }),
     prisma.user.count({ where }),
@@ -77,9 +72,6 @@ const getAllUsers = async (filters: {
   };
 };
 
-// ============================================
-// 2️⃣ GET SINGLE USER
-// ============================================
 const getUserById = async (id: string) => {
   const user = await prisma.user.findUnique({
     where: { id },
@@ -87,12 +79,10 @@ const getUserById = async (id: string) => {
       id: true,
       name: true,
       email: true,
-      phone: true,
       role: true,
       status: true,
       createdAt: true,
       updatedAt: true,
-      // Include related data
       properties: {
         select: {
           id: true,
@@ -146,18 +136,15 @@ const getUserById = async (id: string) => {
   return user;
 };
 
-
 const updateUser = async (
   id: string,
   payload: {
     name?: string;
     email?: string;
-    phone?: string;
-    role?: "TENANT" | "LANDLORD" | "ADMIN";
-    status?: "ACTIVE" | "BANNED";
+    role?: Role;
+    status?: UserStatus;
   }
 ) => {
-
   const user = await prisma.user.findUnique({
     where: { id },
   });
@@ -166,25 +153,29 @@ const updateUser = async (
     throw new AppError(404, "User not found");
   }
 
-
-  if (payload.status === "BANNED" && user.role === "ADMIN") {
+  if (payload.status === UserStatus.BANNED && user.role === Role.ADMIN) {
     throw new AppError(403, "Cannot ban an admin user");
   }
 
-
-  if (payload.role && user.role === "ADMIN") {
+  if (payload.role && user.role === Role.ADMIN) {
     throw new AppError(403, "Cannot change admin role");
   }
 
+  const { name, email, role, status } = payload;
+  
+  const updateData: any = {};
+  if (name !== undefined) updateData.name = name;
+  if (email !== undefined) updateData.email = email;
+  if (role !== undefined) updateData.role = role;
+  if (status !== undefined) updateData.status = status;
 
   const updatedUser = await prisma.user.update({
     where: { id },
-    data: payload,
+    data: updateData,
     select: {
       id: true,
       name: true,
       email: true,
-      phone: true,
       role: true,
       status: true,
       createdAt: true,
@@ -195,9 +186,7 @@ const updateUser = async (
   return updatedUser;
 };
 
-
 const deleteUser = async (id: string) => {
-  // Check if user exists
   const user = await prisma.user.findUnique({
     where: { id },
   });
@@ -206,7 +195,7 @@ const deleteUser = async (id: string) => {
     throw new AppError(404, "User not found");
   }
 
-  if (user.role === "ADMIN") {
+  if (user.role === Role.ADMIN) {
     throw new AppError(403, "Cannot delete an admin user");
   }
 
@@ -216,7 +205,6 @@ const deleteUser = async (id: string) => {
 
   return { message: "User deleted successfully" };
 };
-
 
 const getDashboardStats = async () => {
   const [
@@ -229,20 +217,11 @@ const getDashboardStats = async () => {
     recentRentals,
     revenueData,
   ] = await Promise.all([
- 
     prisma.user.count(),
- 
     prisma.property.count(),
-    
-
     prisma.rentalRequest.count(),
-    
-
     prisma.payment.count(),
-    
-   
     prisma.review.count(),
-
     prisma.property.findMany({
       take: 5,
       orderBy: { createdAt: "desc" },
@@ -257,8 +236,6 @@ const getDashboardStats = async () => {
         category: true,
       },
     }),
-    
- 
     prisma.rentalRequest.findMany({
       take: 5,
       orderBy: { createdAt: "desc" },
@@ -279,11 +256,9 @@ const getDashboardStats = async () => {
         },
       },
     }),
-    
-    
     prisma.payment.aggregate({
       where: {
-        status: "COMPLETED",
+        status: PaymentStatus.COMPLETED,
       },
       _sum: {
         amount: true,
@@ -292,7 +267,6 @@ const getDashboardStats = async () => {
     }),
   ]);
 
- 
   const userDistribution = await prisma.user.groupBy({
     by: ["role"],
     _count: {
@@ -300,7 +274,6 @@ const getDashboardStats = async () => {
     },
   });
 
-  
   const propertyDistribution = await prisma.property.groupBy({
     by: ["available"],
     _count: {
@@ -308,7 +281,6 @@ const getDashboardStats = async () => {
     },
   });
 
- 
   const rentalDistribution = await prisma.rentalRequest.groupBy({
     by: ["status"],
     _count: {
@@ -337,7 +309,6 @@ const getDashboardStats = async () => {
     },
   };
 };
-
 
 const getAllProperties = async (filters: {
   available?: boolean;
@@ -411,9 +382,8 @@ const getAllProperties = async (filters: {
   };
 };
 
-
 const getAllRentals = async (filters: {
-  status?: string;
+  status?: RentalStatus;
   page?: number;
   limit?: number;
   sortBy?: string;
@@ -480,9 +450,8 @@ const getAllRentals = async (filters: {
   };
 };
 
-
 const getAllPayments = async (filters: {
-  status?: string;
+  status?: PaymentStatus;
   page?: number;
   limit?: number;
   sortBy?: string;
