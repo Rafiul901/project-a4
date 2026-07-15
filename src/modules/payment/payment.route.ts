@@ -12,7 +12,7 @@ import {
 
 const router = Router();
 
-// Create payment (Tenant only)
+
 router.post(
   "/create",
   auth,
@@ -21,7 +21,7 @@ router.post(
   PaymentController.createPayment
 );
 
-// Confirm payment (Tenant only)
+
 router.post(
   "/confirm",
   auth,
@@ -30,7 +30,7 @@ router.post(
   PaymentController.confirmPayment
 );
 
-// Get payment history (Tenant only)
+
 router.get(
   "/",
   auth,
@@ -39,14 +39,14 @@ router.get(
   PaymentController.getPaymentHistory
 );
 
-// Get single payment (Tenant or Landlord or Admin)
+
 router.get(
   "/:id",
   auth,
   PaymentController.getPaymentById
 );
 
-// Stripe Webhook (Public - no auth)
+
 router.post(
   "/webhook",
   express.raw({ type: 'application/json' }),

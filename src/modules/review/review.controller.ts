@@ -4,7 +4,7 @@ import sendResponse from "../../utils/sendResponse";
 import { ReviewService } from "./review.service";
 import { IReviewFilters } from "./review.interface";
 
-// 1️⃣ Create Review (Tenant only)
+
 const createReview = catchAsync(async (req: Request, res: Response) => {
   const tenantId = req.user.id;
   const result = await ReviewService.createReview(req.body, tenantId);
@@ -17,9 +17,8 @@ const createReview = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// 2️⃣ Get Reviews for a Property (Public)
 const getPropertyReviews = catchAsync(async (req: Request, res: Response) => {
-  // 🌟 FIXED: Changed from destructuring to explicit string type-casting
+ 
   const propertyId = req.params.propertyId as string;
   
   const filters: IReviewFilters = {
@@ -41,7 +40,7 @@ const getPropertyReviews = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// 3️⃣ Get Tenant's Reviews
+
 const getTenantReviews = catchAsync(async (req: Request, res: Response) => {
   const tenantId = req.user.id;
   const filters: IReviewFilters = {
@@ -63,9 +62,9 @@ const getTenantReviews = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// 4️⃣ Get Single Review
+
 const getReviewById = catchAsync(async (req: Request, res: Response) => {
-  // 🌟 FIXED: Changed from destructuring to explicit string type-casting
+
   const id = req.params.id as string;
   const userId = req.user.id;
   const userRole = req.user.role;
@@ -79,9 +78,8 @@ const getReviewById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// 5️⃣ Update Review (Tenant only)
 const updateReview = catchAsync(async (req: Request, res: Response) => {
-  // 🌟 FIXED: Changed from destructuring to explicit string type-casting
+ 
   const id = req.params.id as string;
   const tenantId = req.user.id;
   const result = await ReviewService.updateReview(id, req.body, tenantId);
@@ -94,9 +92,9 @@ const updateReview = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// 6️⃣ Delete Review (Tenant or Admin)
+
 const deleteReview = catchAsync(async (req: Request, res: Response) => {
-  // 🌟 FIXED: Changed from destructuring to explicit string type-casting
+
   const id = req.params.id as string;
   const userId = req.user.id;
   const userRole = req.user.role;
